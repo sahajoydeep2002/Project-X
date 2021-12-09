@@ -1,0 +1,680 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "1bfb9c68",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import deepchem as dc\n",
+    "from molgan import BasicMolGANModel as MolGAN\n",
+    "from deepchem.models.optimizers import ExponentialDecay\n",
+    "from tensorflow import one_hot"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "dcfdb9ad",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "56dc87eb",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>0</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>OC12CC(C1)C1CC2O1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>CCC1CN1CC(N)=O</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>N#CC(CO)NC1CC1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>O=Cn1cn[nH]c1=O</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>CC(O)c1ncon1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4984</th>\n",
+       "      <td>CC1CC(C)C2CC1C2</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4985</th>\n",
+       "      <td>CCCn1ccnn1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4986</th>\n",
+       "      <td>C#CC12CCC1(OC)C2</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4987</th>\n",
+       "      <td>CC1C(C)C2C1C2(C)O</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4988</th>\n",
+       "      <td>CC1=CC(O[CH][NH])OC1</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>4989 rows × 1 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                         0\n",
+       "0        OC12CC(C1)C1CC2O1\n",
+       "1           CCC1CN1CC(N)=O\n",
+       "2           N#CC(CO)NC1CC1\n",
+       "3          O=Cn1cn[nH]c1=O\n",
+       "4             CC(O)c1ncon1\n",
+       "...                    ...\n",
+       "4984       CC1CC(C)C2CC1C2\n",
+       "4985            CCCn1ccnn1\n",
+       "4986      C#CC12CCC1(OC)C2\n",
+       "4987     CC1C(C)C2C1C2(C)O\n",
+       "4988  CC1=CC(O[CH][NH])OC1\n",
+       "\n",
+       "[4989 rows x 1 columns]"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "smilesDF = pd.read_csv('Qsmiles.txt', delimiter = '\\n', header = None)\n",
+    "smilesDF"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8161936a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "smilesList = list(smilesDF[0])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c600c0fb",
+   "metadata": {},
+   "source": [
+    "# Classical molGAN implementation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "f14b4905",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "smiles = smilesList\n",
+    "feat = dc.feat.MolGanFeaturizer()\n",
+    "features = feat.featurize(smiles)\n",
+    "features = list(filter(lambda x: x is not None, features))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "ec38f8d2",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Ending global_step 399: generator average loss -4.20409, discriminator average loss -3.65412\n",
+      "TIMING: model fitting took 25.408 s\n",
+      "Generating 10 samples\n",
+      "10 molecules generated\n",
+      "7 valid molecules\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "RDKit ERROR: [12:23:53] Explicit valence for atom # 3 F, 3, is greater than permitted\n",
+      "RDKit ERROR: [12:23:53] Explicit valence for atom # 5 C, 7, is greater than permitted\n"
+     ]
+    }
+   ],
+   "source": [
+    "gan = MolGAN(learning_rate=ExponentialDecay(0.001, 0.9, 5000))\n",
+    "dataset = dc.data.NumpyDataset([x.adjacency_matrix for x in features],[x.node_features for x in features])\n",
+    "def iterbatches(epochs):\n",
+    "    for i in range(epochs):\n",
+    "        for batch in dataset.iterbatches(batch_size=gan.batch_size, pad_batches=True):\n",
+    "            adjacency_tensor = one_hot(batch[0], gan.edges)\n",
+    "            node_tensor = one_hot(batch[1], gan.nodes)\n",
+    "            yield {gan.data_inputs[0]: adjacency_tensor, gan.data_inputs[1]:node_tensor}\n",
+    "gan.fit_gan(iterbatches(8), generator_steps=0.2, checkpoint_interval=5000)\n",
+    "generated_data = gan.predict_gan_generator(10)\n",
+    "# convert graphs to RDKitmolecules\n",
+    "nmols = feat.defeaturize(generated_data)\n",
+    "print(\"{} molecules generated\".format(len(nmols)))\n",
+    "# remove invalid moles\n",
+    "nmols = list(filter(lambda x: x is not None, nmols))\n",
+    "# currently training is unstable so 0 is a common outcome\n",
+    "print (\"{} valid molecules\".format(len(nmols)))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e82476bb",
+   "metadata": {},
+   "source": [
+    "# Implementing the Quantum Lambda Activation Function"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "1112c11c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from qiskit import IBMQ\n",
+    "#from qiskit_rng import Generator"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "3afedde8",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from qiskit.circuit import library"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 26,
+   "id": "88c49af8",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from qiskit_rng import Generator"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "id": "28efc4ac",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "IBMQ.save_account('63be3fbcd17706e675343eaca5c11964a916885ae585d2acdfdfdc476671eebbd3c47db6213f526255be9612a9389413162ca3bdd8862bbd6aa086549b44849f')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "id": "51d1e271",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "provider = IBMQ.load_account()\n",
+    "backend = provider.get_backend('ibmq_qasm_simulator')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "a4568e08",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Job Status: job has successfully run\n"
+     ]
+    }
+   ],
+   "source": [
+    "from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, execute,IBMQ\n",
+    "from qiskit.tools.monitor import job_monitor\n",
+    "\n",
+    "\n",
+    "provider = IBMQ.get_provider()\n",
+    "\n",
+    "q = QuantumRegister(16,'q')\n",
+    "c = ClassicalRegister(16,'c')\n",
+    "circuit = QuantumCircuit(q,c)\n",
+    "circuit.h(q) # Applies hadamard gate to all qubits\n",
+    "circuit.measure(q,c) # Measures all qubits \n",
+    "\n",
+    "backend = provider.get_backend('ibmq_qasm_simulator')\n",
+    "job = execute(circuit, backend, shots=1100)\n",
+    "                                            \n",
+    "job_monitor(job)\n",
+    "counts = job.result().get_counts()\n",
+    "\n",
+    "input()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ad23a964",
+   "metadata": {},
+   "source": [
+    "# Data Preprocessing"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 31,
+   "id": "ad9017a1",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 33,
+   "id": "0ce51390",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def binaryToDecimal(binary): \n",
+    "    return int(binary,2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "df7595ca",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "randNums = []\n",
+    "for i in range(len(counts)):\n",
+    "    randNums.append(binaryToDecimal(counts.popitem()[0]))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 36,
+   "id": "8da8dee3",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([65460, 65433, 65408, ...,   263,  4195,  4184])"
+      ]
+     },
+     "execution_count": 36,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "a = np.array(randNums)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 37,
+   "id": "0de51a28",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([65460, 65433, 65408, 65357, 65306, 65299, 65237, 65191, 65189,\n",
+       "       64936, 64924, 64877, 64802, 64799, 64767, 64720, 64712, 64673,\n",
+       "       64629, 64607, 64505,  4025, 64398, 64338, 64333, 64259, 64173,\n",
+       "        4003, 64034, 64010, 63783, 63776, 63744, 63737, 63669, 63608,\n",
+       "       63576, 63537, 63463, 63454,  3960, 63336, 63202, 63136, 63057,\n",
+       "       62990, 62925, 62759, 62743, 62638, 62485, 62402, 62297,  3892,\n",
+       "       62233, 62119, 62019, 61900, 61840, 61838, 61715, 61713, 61702,\n",
+       "       61519, 61508, 61472, 61271, 61219, 61143, 61133, 61094, 61028,\n",
+       "       61005, 60981, 60971, 60951, 60870, 60823, 60767, 60742, 60698,\n",
+       "       60671, 60634, 60568, 60480, 60476, 60417, 60396, 60361, 60277,\n",
+       "       60199, 60100, 60074, 60037, 60026, 59984, 59926, 59791, 59779,\n",
+       "       59768, 59745, 59740, 59672, 59655, 59627, 59538, 59510, 59474,\n",
+       "       59452, 59444,  3703, 59245, 59218,  3699, 59172, 59014, 58962,\n",
+       "       58885, 58840, 58762, 58732, 58589, 58538, 58380, 58307, 58117,\n",
+       "       58086, 58062, 57941, 57914, 57891, 57838, 57773, 57744, 57654,\n",
+       "       57641, 57503, 57374, 57368, 57360, 57327, 57310, 57298, 57240,\n",
+       "       57155, 57134, 57080, 56979, 56957, 56950, 56760, 56574, 56541,\n",
+       "       56496, 56472, 56462, 56435, 56374, 56348, 56308, 56291, 56255,\n",
+       "       56212, 56175, 56161, 56155, 56089, 55872, 55865, 55760, 55646,\n",
+       "       55517, 55500, 55459, 55428, 55397, 55370, 55334, 55201, 55177,\n",
+       "       55133, 55112, 55108, 55082, 54918, 54887, 54721, 54662, 54436,\n",
+       "       54293, 54217, 54177, 54115, 54019, 54005, 53963, 53916, 53840,\n",
+       "       53800, 53725, 53672, 53618, 53579, 53571, 53452, 53442, 53432,\n",
+       "        3332, 53307, 53286, 53264, 53110,  3319, 53083, 53066, 53038,\n",
+       "       53032, 53029, 52897, 52860, 52802, 52745, 52714, 52663,  3289,\n",
+       "       52455, 52442, 52351, 52294, 52271, 52234, 52186, 52154, 52097,\n",
+       "       52069, 52052, 52050, 52034, 51991, 51961, 51896, 51864, 51856,\n",
+       "       51837, 51724, 51603, 51596, 51587,  3219, 51461, 51405,  3203,\n",
+       "       51214, 51193, 51086, 51048, 50884, 50838, 50800, 50659, 50605,\n",
+       "       50596, 50525, 50398, 50395,  3149, 50360, 50144, 50129, 50123,\n",
+       "       50034, 49837, 49805, 49717, 49547, 49389, 49330, 49212, 49164,\n",
+       "       49095, 48928, 48553, 48444, 48431, 48372, 48268, 48178, 48166,\n",
+       "       48164, 48107, 48001, 47982, 47796, 47734, 47706,  2975, 47591,\n",
+       "       47530, 47466, 47443,  2961, 47372, 47331, 47291, 47232, 47121,\n",
+       "       47103, 47084, 46967, 46829, 46799, 46788, 46759, 46736, 46727,\n",
+       "       46715, 46606, 46503, 46426, 46385, 46383, 46352, 46345, 46344,\n",
+       "         181, 46292, 46175, 46035, 45992, 45975, 45913, 45910, 45895,\n",
+       "       45843, 45816, 45739, 45722, 45632, 45590, 45588, 45566, 45518,\n",
+       "       45515, 45453, 45448, 45368, 45316, 45289, 45272,  2825,  2819,\n",
+       "       45101, 45091, 45088, 45080, 45002, 44731, 44702, 44620, 44582,\n",
+       "       44523, 44522,  2782, 44505, 44454, 44441, 44371, 44344, 44202,\n",
+       "       44142, 44051, 43987, 43979, 43941, 43829, 43692, 43685, 43548,\n",
+       "       43536, 43485, 43430, 43381, 43252,  2700, 43171, 43088, 42854,\n",
+       "       42848, 42782, 42758, 42667, 42529, 42479, 42417, 42412,  2645,\n",
+       "       42271, 42225, 42157, 42022, 42010, 41927, 41914, 41869, 41857,\n",
+       "        2616, 41842, 41818, 41809, 41726, 41711, 41693, 41608, 41606,\n",
+       "       41566, 41549, 41511, 41388, 41357, 41351, 41274, 41243, 41239,\n",
+       "       41227, 41112, 41090, 41068, 41043, 40943, 40808, 40776, 40722,\n",
+       "       40666,  2536, 40510, 40507, 40352, 40289, 40237, 40236, 40154,\n",
+       "       40139, 40124, 40014, 39874, 39837, 39781, 39754, 39735, 39711,\n",
+       "       39709, 39693, 39684, 39657, 39612, 39541, 39483, 39443, 39358,\n",
+       "       39327, 39198,  2449, 39176, 39122, 39041, 39040, 39015, 38983,\n",
+       "       38918, 38885, 38821, 38729, 38444, 38379, 38372, 38362, 38234,\n",
+       "       38122, 38108, 38098, 38064, 38040, 37983, 37932, 37869, 37730,\n",
+       "       37728, 37706,  2350, 37590, 37588, 37584, 37547, 37546, 37423,\n",
+       "       37384, 37291, 37259, 37065, 37048, 37003, 36914, 36787, 36750,\n",
+       "       36683, 36636, 36621,  2286, 36574,  2284, 36455,  2271,  2270,\n",
+       "       36281, 36264, 36217, 36178, 36043,  2250, 35974, 35909, 35850,\n",
+       "       35774, 35748,  2233, 35718, 35549, 35548, 35408, 35384,  2209,\n",
+       "       35183, 35010, 34996, 34802, 34795, 34792, 34768, 34624, 34593,\n",
+       "       34456, 34445, 34419, 34410, 34320, 34205, 34191, 33995, 33739,\n",
+       "       33685, 33645,  2096, 33529, 33508, 33500, 33484, 33340,   130,\n",
+       "       33193, 33178, 33077, 33017,  2062, 32947, 32863, 32830, 32819,\n",
+       "       32771, 32733, 32704, 32622, 32490, 32384, 32339, 32322, 32246,\n",
+       "       32227, 32192, 32062, 32048, 32007, 31962,  1996, 31914, 31863,\n",
+       "       31833, 31825, 31777, 31757, 31676, 31674, 31554, 31506, 31477,\n",
+       "       31416, 31408, 31405, 31394, 31189, 31119, 31008, 31003, 30997,\n",
+       "       30993, 30895, 30821, 30799, 30776, 30538, 30536, 30518, 30442,\n",
+       "       30391, 30330, 30328, 30309, 30210, 30190, 30052, 30006, 29955,\n",
+       "       29938, 29927, 29860, 29806, 29773, 29705, 29317, 29292, 29188,\n",
+       "       29146, 29053, 28913, 28788, 28720, 28684, 28605, 28561, 28556,\n",
+       "       28504, 28455, 28453, 28425, 28420, 28403, 28401, 28376, 28355,\n",
+       "       28314, 28258, 28257,  1762, 28181, 28161, 27974, 27846, 27814,\n",
+       "        1738, 27724, 27712, 27693, 27685, 27606, 27444, 27419, 27256,\n",
+       "       27218, 27174, 27166, 27050, 27015,  1688, 26992, 26901, 26893,\n",
+       "       26848, 26785, 26772, 26736, 26685, 26479, 26417, 26328, 26314,\n",
+       "       26236, 26143, 26101, 26059, 26036, 25949, 25891, 25886, 25842,\n",
+       "       25828, 25683, 25678, 25652, 25623, 25485, 25467, 25279, 25122,\n",
+       "       25084, 25082, 25047, 24940, 24925, 24899, 24857, 24811, 24786,\n",
+       "       24608, 24584, 24382, 24305, 24261, 24206, 24204, 24166, 24108,\n",
+       "       24106, 23953,  1492, 23840, 23741, 23664, 23556,  1468, 23218,\n",
+       "       23147,  1446, 23113, 22929, 22924, 22812, 22807, 22767,  1417,\n",
+       "       22662, 22551, 22503, 22496, 22419, 22418, 22407, 22290, 22190,\n",
+       "       22116, 21987, 21971, 21952,  1370, 21787, 21780, 21699, 21644,\n",
+       "       21620, 21404, 21311, 21295, 21220, 21179, 21108, 21010, 20816,\n",
+       "       20800, 20716, 20700, 20644, 20635, 20622, 20596, 20565, 20352,\n",
+       "       20332, 20283, 20277, 20246, 20227, 20147, 20111, 19913, 19792,\n",
+       "       19765, 19701, 19622, 19522, 19472, 19389, 19333, 19279, 19269,\n",
+       "       19184, 19145, 19143, 18975, 18903, 18862, 18785, 18722, 18677,\n",
+       "        1154, 18454, 18377, 18299, 18264, 18132, 18123, 17991, 17980,\n",
+       "       17974, 17895, 17878, 17869, 17835, 17787, 17741, 17736, 17722,\n",
+       "       17717, 17690, 17626, 17455, 17419, 17383, 17345, 17331, 17328,\n",
+       "       17311, 17281,  1075, 17179, 17147, 17087, 17068, 17057, 17032,\n",
+       "       16969, 16920, 16820, 16776, 16774, 16723, 16594,  1036, 16498,\n",
+       "       16480, 16411, 16381, 16335, 16160, 16152, 16102, 16087, 16048,\n",
+       "       16042, 15997, 15962, 15959, 15957, 15940, 15873, 15856, 15733,\n",
+       "       15729, 15724, 15706, 15598, 15504, 15439, 15398, 15360, 15277,\n",
+       "       15274, 15180, 15132, 15060, 15045,   939, 14956,   934, 14930,\n",
+       "       14880, 14835, 14783, 14780, 14713, 14711, 14603, 14577, 14364,\n",
+       "       14333, 14247, 14240, 14239, 14198, 14181, 14139, 14095, 14080,\n",
+       "       13979, 13961, 13949, 13884, 13858, 13687, 13495, 13370, 13344,\n",
+       "       13338, 13334, 13324, 13310, 13268, 13205, 13183, 13171, 13163,\n",
+       "       13093, 13084, 13029, 13019, 12861, 12856, 12835, 12787, 12772,\n",
+       "       12759, 12717, 12577, 12548, 12546, 12518, 12393, 12330, 12281,\n",
+       "       12244,   764, 12222, 12172, 12171, 12098, 12002, 11982, 11976,\n",
+       "       11969, 11965, 11957, 11917, 11821, 11788, 11722, 11611, 11607,\n",
+       "       11602, 11483, 11405, 11335, 11094, 11079, 11048, 11003, 11001,\n",
+       "       10985, 10916, 10908, 10890, 10886, 10844, 10842, 10835, 10815,\n",
+       "       10576, 10573,   660, 10526,   655,   654, 10442, 10366, 10328,\n",
+       "       10313, 10264, 10197, 10187,  9984,  9920,   610,  9754,  9749,\n",
+       "        9722,  9712,  9572,  9476,    37,  9442,  9421,  9338,  9320,\n",
+       "        9213])"
+      ]
+     },
+     "execution_count": 37,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "counts1 = np.array(randNums)[0:1000]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6d74ea8c",
+   "metadata": {},
+   "source": [
+    "# GAN with Quantum Lambda Fucntion"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 40,
+   "id": "68f9c25f",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Ending global_step 999: generator average loss -22.3265, discriminator average loss -10.7346\n",
+      "TIMING: model fitting took 51.994 s\n",
+      "Generating 100 samples\n",
+      "100 molecules generated\n",
+      "96 valid molecules\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "RDKit ERROR: [12:46:30] Explicit valence for atom # 0 C, 7, is greater than permitted\n",
+      "RDKit ERROR: [12:46:30] Explicit valence for atom # 0 C, 5, is greater than permitted\n",
+      "RDKit ERROR: [12:46:30] Explicit valence for atom # 0 C, 7, is greater than permitted\n",
+      "RDKit ERROR: [12:46:30] Explicit valence for atom # 0 C, 6, is greater than permitted\n"
+     ]
+    }
+   ],
+   "source": [
+    "gan = MolGAN(learning_rate=ExponentialDecay(0.001, 0.9, 5000))\n",
+    "dataset = dc.data.NumpyDataset([x.adjacency_matrix for x in features],[x.node_features for x in features])\n",
+    "def iterbatches(epochs):\n",
+    "    for i in range(epochs):\n",
+    "        for batch in dataset.iterbatches(batch_size=gan.batch_size, pad_batches=True):\n",
+    "            adjacency_tensor = one_hot(batch[0], gan.edges)\n",
+    "            node_tensor = one_hot(batch[1], gan.nodes)\n",
+    "            yield {gan.data_inputs[0]: adjacency_tensor, gan.data_inputs[1]:node_tensor}\n",
+    "gan.fit_gan(iterbatches(20), generator_steps=0.2, checkpoint_interval=5000)\n",
+    "\n",
+    "inNoise = np.array(randNums)\n",
+    "\n",
+    "generated_data = gan.predict_gan_generator(noise_input = np.reshape(counts1,(100,10)))\n",
+    "\n",
+    "# convert graphs to RDKitmolecules\n",
+    "nmols = feat.defeaturize(generated_data)\n",
+    "print(\"{} molecules generated\".format(len(nmols)))\n",
+    "# remove invalid moles\n",
+    "nmols = list(filter(lambda x: x is not None, nmols))\n",
+    "# currently training is unstable so 0 is a common outcome\n",
+    "print (\"{} valid molecules\".format(len(nmols)))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6b3df790",
+   "metadata": {},
+   "source": [
+    "# Visualization"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "id": "f811c7b2",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[<rdkit.Chem.rdchem.Mol at 0x16c0f4100>,\n",
+       " <rdkit.Chem.rdchem.Mol at 0x16c0f43a0>,\n",
+       " <rdkit.Chem.rdchem.Mol at 0x16c0f40a0>,\n",
+       " <rdkit.Chem.rdchem.Mol at 0x16c0f4340>,\n",
+       " <rdkit.Chem.rdchem.Mol at 0x16c0f4460>,\n",
+       " <rdkit.Chem.rdchem.Mol at 0x16c0f4160>,\n",
+       " <rdkit.Chem.rdchem.Mol at 0x16c0f42e0>]"
+      ]
+     },
+     "execution_count": 19,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "tempMols = nmols\n",
+    "tempMols"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "id": "bbfd2ab3",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from rdkit.Chem import Draw"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "id": "0a3b83cf",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/png": "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2bMhISEBAQGFhYWdblhbW6tefbZv3z71wvH8/Pz2IAcURkg9wN/fPzc3NzY21snJKT093dvb+x4To5qbm3fu3Onq6hoXF6fVatVb3BgMhoG7VLH0qZj6FXVilJqTen5raWm5/eWoes5U/+75+/sX9M3JRz2LEVLPu+M3Pb1eD+DnP/95p789DkwaRVEEzr80ACQnJ2/durX9MjetVtvW1ubk5LR9+/YtW7bYq/cbI4ARkhU1NTX95S9/efXVV4cPH15VVfXcc8+99dZbY7t945R+ihGS1VVUVGi12pqaGk9PT+mx2CJGSCSMH1EQCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZEwRkgkjBESCWOERMIYIZGw/wHSM+5RzFG5cAAAAABJRU5ErkJggg==\n",
+      "text/plain": [
+       "<PIL.PngImagePlugin.PngImageFile image mode=RGB size=300x300 at 0x1727DC460>"
+      ]
+     },
+     "execution_count": 24,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "Draw.MolToImage(tempMols[4])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 170,
+   "id": "7f474789",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/png": "iVBORw0KGgoAAAANSUhEUgAAAcIAAACWCAIAAADCEh9HAAAABmJLR0QA/wD/AP+gvaeTAAAW6klEQVR4nO3daVRU5xkH8GeQESEguIFbFZWoQTTIYhC11hO3tDTRGJsmOPQkVTSeZrTn5DietmZs0zY0zXLVmkRPl4zapkUsitaQ1sRUQBMbCYuSuiBuEQFRBhWGAebth3c6EpZhYGbue+fy/518SOB67wNm/nPnPu+iYYwRAAD0lp/oAgAAfBtiFADALYhRAAC3IEYBANyCGAUAcIu/6AIAQNGuXqXqaiKi4GCaNKn7wx56iIKCyGymS5eIiIYPp4gIZ+f/8kuyWqlfP4qJ8VzR8sLdKAA48/rrlJBACQk0bRqVlXV/2LlzREQffUSxsRQbS+++2835Fy+m2FiaPduTNcsMMQoALrFaac0awkDzjhCjAOCqvDzatUt0EcqDGAUAl/BHnC+9RLW1oktRGMQoALhk0yYiops3yWAQXYrCIEYBwCXf/jbNm0dE9Mc/Un6+6GqUBDEKAK7ato38/YkxWrOGmptFV6MYiFEAcNWUKbRqFRHRmTP05puiq1EMDL8HgB545RX629/o1i36xS/o6acpMrKb40+fpvffd3ZAQ4PnihMEMQoAPTBkCL36Kq1eTQ0N9MIL9MEH3RyflUVZWbJUJg4+1ANAz6xcSY88QkSUm0v79omuRgEQowDQM35+9Pbb1K8fEdH69d18Kt+8mRhz9s+YMfJU7UWIUQDosbg4euEFIqJr1+j110VXIxpiFAB645VX7POaXnuNrl0TXY1QiFEA6I2wMPrtb4mI7t2jn/1MdDVCIUYBoJdWrKC5c4mIdu+moiLR1YiDGAWAXtJo6O23Saslm42OHRNdjTiIUQDovehoWr/ekyesqqJNm2j2bIqKosRE+ulP6dYtT57fGxCjAOCWzZu7n8vkosJCio2lX/6SGhooOppu3qRf/5oSE6mmxjPn9xLEKAC4JSjIM2OeGKPnnyezmXJzqbCQcnLo3DlatowuXqRXX/XA+b0Hk0EBwJnkZLJYiIhCQro8ZtkyMhqpspKIaMgQIqLx42n1aiKihIRuzr9iBdXWUlAQaTT097/T2bO0aJH9W1otGY20bx8dOeL2j+FNGoatVQBAqerqaNAgGjOGLl8WXUrX8KEeAHpm82Z66SWqqpLjWhUVROSxZ69eghgFgJ7505/ojTeosVGOa733HhHRkiVyXKvX8KEeAHomMJAsFrp3j4KCvHuhkydpzhwaPpzOnKHgYO9eyx24GwWAHjCbyWKhkBCvZ+jFi/TUU+TvT++/r+gMJcQoAPRIdTURUXi4d69y5gx961tUU0P791Nysnev5T7EKAD0AO8s8bWdvOSvf6WkJLp7lw4coAULvHghT0GMAkAPeDVGW1po40Z65hkaNYqOH6eFC71yFY/D8HsA6AHvxWhjIy1aRHl51L8/zZ9v79E7vPQSDR3q+Yt6BGIUAHrAe89GzWbKyyMislpp+/b23/3hDxGjAKAK3rsbHT6cfHT4JZ6NAkAPyNBi8jmIUQDoAcRoR4hRAOgBecaN+hbEKAD0AO5GO8KcegBwVWMjBQXRgAEyrUviK3A3CgCu4rei+ETfDmIUAFyFT/SdQowCgKtwN9opxCgAuIq36XE32g5iFABchQ/1nUKMAoCrEKOdQowCgKsw9r5TiFEAcBXuRjuFGAUAVyFGO4UYBQBXIUY7hcmgAOCS5mYKCCA/P7JayQ83YG3glwEALqmuJsZo2DBkaHv4fQCASzD2viuIUQBwCR6MdgUxCgAuQYx2BTEKAC65c+f2uHHWUaNaRBeiOIhRAHDJpUu/qqgIGDz4LdGFKA5iFABcUlVVRUQR+FTfAWIUAFyCGO0KYhQAXFJdXU1E4ViYpAPEKAC4BHejXcFkUADons1mCwgIaG1tbWpq0mq1ostRFtyN9kxzc7PoEgAEqK2tbWlpGTx4MDK0I8SoSxhjBw8enD17dnp6ekJCQmFhoeiKAGSFT/ROIEa7YbVa33vvvZiYmMcff7ygoGDv3r2nTp2aOXPma6+9ZrPZRFcHIBP0l5xAjHbp7t27W7ZsiYqKeu6558rKysaOHZuRkVFeXm4wGFpaWgwGw+zZs8vLy0WXCSAH3I06gRjtRE1NzebNm8eOHbt+/fqrV69OnTrVZDKdP3/eYDBERERkZGTk5uaOGjXqxIkTcXFxO3fuFF0vgNchRp1AjH5NRUXFunXrIiMjf/7zn9+6dWvWrFk5OTnFxcVpaWltn6wvWLCgqKhoyZIl9fX1q1evXr58+a1btwSWDeBt+FDvBGLUjmflxIkTt27darFYUlJSCgoK8vPzv/vd72o0mo7HDx06NDs722QyhYSEZGVlTZky5YMPPpC/bAB54G7UCcQo8aycPn367t27/fz8dDpdaWnpwYMHk5OTu/2zaWlpJSUlc+bMuXHjxne+851169Y1NTXJUDOAzBCjTvTdGLXZbAcPHkxKSpozZ86hQ4ceeOABvV5fXl6+a9eu6Oho188TGRl59OjRjIwMrVa7devW+Pj4oqIi75UNIASPUXyo7xzreywWi8lkmjRpEv8NhIeHG43G2tpaN0978uTJiRMnEtGAAQMyMjJaW1s9Ui2AEowZM4aIKioqRBeiRH0rRs1msyRJI0eO5AE6fvx4SZIaGho8df6Ghga9Xs+fpT766KNXr1711JkBxBowYAAR3bt3T3QhStRX5tRXVVW98847W7ZsqaurI6LY2Ngf//jHzz77rL+/v8ev9eGHHz733HOVlZWhoaHbt29PTU31+CUA5GQ2m8PCwkJCQurr60XXokiic9zrzp8/r9fr+XspEfExTN6+aFVV1eOPP86vyIdDefuK6nbkyJEnnnji97//fXZ2tuha+qKzZ88SUVRUlOhCFErNMfr555/rdLp+/foRkZ+fX0pKymeffSZnASaTKTg4mIjGjh37ySefyHlpdWhpacnMzIyPj+dvSAEBAUS0cuXKO3fuiC6tbzl27BgRJScniy5EodQZo3l5eSkpKY7Xnk6nO3v2rJBKysvL+cApjUaj1+ubmpqElOFzmpqaTCbT5MmT+V/isGHDXn755TfffPOBBx4gosjIyLy8PNE19iFZWVlEtHTpUtGFKJSqYtRqtZpMppiYGP7aGzhwoF6v/+qrr8RW1dzcbDQa+U3x1KlTi4uLxdajcPX19ZIkjRo1iv8ljhs3rm0bsKysLC4ujoj8/f0NBoPVahVbbR+xfft2IlqzZo3oQhRKJTF69+5dSZL4mAwiGj58uNForKurE13XfZ9++mlUVBRhOFTXbty4YTQaw8LC+F9ibGysyWRqbm5ud1jbt6XExERRnzP6lJdffpmIjEaj6EIUyudjtKamxmg0DhkyhL/2oqKiJElqbGwUXVcn6uvr09PTeZ0LFiwQfpusHBcuXOjYBrTZbE7+yPHjxydMmEBEgYGBkiQ5PxjctGbNGiLavn276EIUyodjtKKiQq/XBwUFOV57mZmZyr/Ly8rK4qE/dOjQw4fPiS5HsFOnTvW6DWg2mx1vS4sXL75+/bpXS+3Lli5dSkRZWVmiC1Eon4zR4uJinU7Hh3xqNJqUlJT8/HzRRfUAn4D/0EMrtFqm07G+2Xbu2Ab873//24vz7N27d/DgwUQUHh4uw1C2vom3SdHW64qPxSh/7fFpQlqtVqfTnT59WnRRvWGz2d59905gICNiUVHsxAnRBcmltbU1JycnISHBg23AysrKxx57jJ9Qp9PdvXvXU9UCx5+f4DF0V3wjRvlrLykpib9UgoOD9Xr9lStXRNflrrIyFhfHiJi/PzMYmLrbzp22AW/fvu2Rk9tsth07dvAnPJMnT/7Pf/7jkdMCFxISQkSK6tkqitJjtOP4QY8sI6Iczc3MaGT9+jEiNmMGU+X7vWxtwNOnT8fGxvLhUEajsaWlxeOX6IMaGhr4CBPRhSiXcmO00/GDal0Z4fhxNmECI2KBgUySRFfjOe3agPHx8SaTyavpZrFYDAaDn58fESUlJZ0/f9571+ojsrOz+R2M8vu3oigxRtuNH3z44Yc7HT+oMmYzS09nRIyILV7MfL3t3LEN+K9//Uu2q3/00UejR48mopCQkB07dsh2XZVxtAEHDhxIRDNnzrxw4YLoopRIWTHai/GDKrN3Lxs8mBGx8HDmo23njz9mL7xgcrQBf/CDHwhpA9bV1a1YsYL/j7Rs2bKbN2/KX4OPam5u3rNnz7Rp0/hvLyws7Pvf/z5f9z40NHTPnj2iC1QcpcRox/GDn376qeiixKisZI89Zr8t1emYr7SdW1tZTg6bOZMRsUGDasPDI/R6/eXLl8VWlZmZOWjQICKKiIj4xz/+IbYY5eMrmj/44IM8QCMiIhxtwJqamiVLlvCvP/XUU2rqT7hPfIy2HT/Yv3//Xo8fVBObjUkSCwhgRGzyZPb556ILcspiYTt3sokT7dEfHs5eeYXV1iplEZbLly/PnTuXP1tIT09X6+N1N9XV1UmSNGLECP5KnDBhQqdtQL6HIx9ocfjwYSGlKpCwGPXG+EGVOX2axcbah0MZjUyBbef6eiZJbPRoe4BGRjJJYgqMKZvNJklS//79iSg6OrqwsFB0RQpy6dIlvV7Pl84iori4OOdtwIqKijlz5tD/Fy2zWCxyVqtMAmLUyQcHaKexkRkMzM+PEbGkJKactnNVFTMa2aBB9gCdNo2ZTEzhXcCSkhL+vE+r1WI4FGOspKREp9Nptdq2rQhX/mBzc3NGRgZ/W5oyZcoXX3zh7VIVTtYY9aFlRBTlyBH7Hd/AgUx427m8nOn1jM+/ImKzZrGcHOYrXcDGxkbHcKjk5OTy8nLRFYnRdjYgb0X0YsIC9nB0kClGb9++/eKLLzrGDyYnJ+/fv78v/957qq6Opabak2vZMiak7VxYyHQ6+0wBPz+WkuKrc1j/+c9/8vHIoaGhu3btEl2OfPiTND5Bnoj4puLutAGxhyMnU4xaLBb+9FqerZDUKjPT/jk6IoLJ2XbOy2MpKfYQ79+f6XTsyy/lu7o3tO07L1++XPV9Zz4bMDo6mv/IQ4cONRqNnhoElpuby1/dfXY4lHwf6g8dOlRaWirb5dTq0iU2dy4jYhoNS0//Wj/n5k2WkWH/x8kdhuOw3NxursXHMCUm2gM0JITp9ezaNc/8IErg6DuPGTPm448/Fl2OV9y5c0eSJD4ZgYgiIyO9MRuwj+/hKH7AE/RUayuTJNa/PyNi0dHM0XYuK7PnHZ8H1RXHYatXd3mMxcJMpvtjmCIimNHIVNkFVHHfuaqqymg08lUEiWjatGneng1oMpl4x7+v7eGIGPVVJSVs6lRGxLRaZjSy1tavxSgR62qNXecxajYzSWIjRtiPmTCBSRJTdxewbd85JiamqKhIdEXuKi8v1+v1gYGB8s8GdOzh6Ofn13f2cESM+rCGBrZ2LdNoGBF7//32MTpiBOt0YbOuYrSykhmNLDTU/t24OGYyKXGwqpeoo+/8xRdfOJYy4C3448ePy1xDuz0cS0pKZC5AfohRn3f4MEtNZTbb/Xzkg/aJ2Lp1nRzfMUZLS5lOx7Tar41h6oPa9p3nz59/zaceA3ecDVhWViawnhMnTvSdPRwRo+rhyMcNG9j8+YyI9evHTp3q8jAeo88+a7+f9fdnK1YwbP/s6DuHhYX9+c9/Fl1ON/gYphkzZvAADQkJ0ev1Chl41Hf2cESMqkfbGC0stM99Skxs/8G8XYxu2MACAphOx8719e317mvXd1bmFDs+G5A/iCCi8PBwo9GowBb5vn37HHs4Zmdniy7HKxCj6tE2Rhljq1bZ//N3v+v8MB6jtbWspkZAtcrXtu/873//W3Q595nNZkmSRo4cyQN0/PjxkiQ1NDSIrqtLfA9HXq1Op7ujuk0cEaPq0S5Gq6tZWJh9Cmnbp3yuDHgCTml958rKSqPRGBoayiNp+vTp3t5NwFPabpYVGRmpsk1GEaPq0S5GGWOSZP/K0093chhi1BVt+84JCQmiVnE8f/58xxXNhVTijrKysri4OCLy9/c3GAxWtWziiBhVj44x2tJyv2t/6FD7wxCjrnP0nQMDAyVJknNHhry8vOXLl/PlVPgYppMnT8p2dY+zWq2Ot6XExER1bNqMGFWPjjHKGCsosDfiJ0ywj6JHjPZO277zwoULvd13ttlsOTk5s2bN4lcMCAjQ6XTqCB3GWEFBwfjx44W8LXkDYlQ9Oo1Rxtjzz9u//qtffe0wxGgvOPrOw4YN279/vzcuYbVaTSbTlClTeIDyFc2v+/oehx2YzWbH29LixYt9+gdEjKpHVzF68yYbOpQRseBg9tVXiFF3ea/vzJcR+cY3vsFPPnbs2IyMjLpO56KpRWZmJp/1Hx4e7otPeznEqHp0FaOMsZ077d9KS0OMekDbvvO4cePy8/PdPGF1dXXbZURiYmJMJpNqOjDOXblyZd68eY63pbu+soljG4hR9XASo62t9j07/fzY7t2IUc8oKyubPn26m33nixcv6vV6x4rmfXBTcfb/zbICAgKIaPLkyb1Yil8sxKh6OIlRxtipU/aF68eNQ4x6TNu+84wZM871ZCpYUVGRYxkRjUaTkpJSUFDgvVKV7/Tp0w8//DB/W/KtzbIQo+rhPEYZYz/60deWgEKMeoqj7xwUFCRJUrfHt90KiS8jcubMGRnqVL62m2UlJSWdV84mjk4hRtWj2xg1m+8vJIoY9ay2feelS5fWdDbBli8j8sgjj/DDgoOD9Xr9lStX5K9W4Y4cOcKX6w8JCdkhfBNHFyBG1aPbGGWM7dqFGPWitn3ngwcPOr7Ot0KaNGlS22VEVL8BlDtu376dmprKf11PPvmkp7aN8hLEqHq4EqOMsXnzEKNe5Og7azSa9PT0GzduSJLENyLlbX2FLyOiKJmZmYMGDSKiiIiIQ455eMqjYYwRqEJ9PX34IRHRpEk0bVqXh125Qp99RkQ0fjzFx8tUW59is9neeOONTZs2NTU1BQYGNjY2ElF8fLzBYHjyySd5PwpcdPny5bS0tGPHjmk0mlWrVr311luOUQ3KgRgF8Iri4uK1a9c++OCDFy5cMBgMjp4S9JTNZtu2bduGDRusVmt0dPSePXv4ODPlQIyqx7Fj9Je/EBGlptKcOc6OfPFFam6m4cNp82ZZKuvDWltbcfvpEaWlpampqaWlpVqt9ic/+cmmTZuU84tFjKrHO+/Q2rX2f1mzxtmRAQFktdLEiXT2rDylAXhAY2Pjxo0bt23bxhhLTk7evXs3H2cmnJ/oAgAAXBIYGLhly5bc3NyRI0ceP358+vTpu3fvFl0UEWIUAHzLwoULi4qKlixZUl9fn5aW9r3vfe/WrVtiS0KMAoCPGTZsWHZ2tslkCg4O3rt3b2xs7NGjRwXWgxgFAJ+UlpZWUlIye/bsq1evPvroo+vWrWtqahJSCWIUAHzVuHHjjh49mpGR4e/vv3Xr1vj4+OLiYvnLQIwCgA/jqxTm5+dPnDjxzJkzSUlJv/nNb2w2m5w1IEYBwOfNmDGjqKhIr9dbLJaNGzcuWrTo2rVrsl0d40bVwzFuNCqKhg93dmRBATGGcaOgQgcOHFi1alVNTc2QIUM++eSTmJgYGS7qL8M1QGYXLtCFC6KLABDhiSeemDlz5sqVK69fv+5YUsvbEKMq9M1v0v+3lezcjh0k77MjAPmEh4cfOHCgrq5Oq9XKc0XEqAo980w3k0H/8AeyWuWqBkB2Go2Gr7AnD7SYAADcghgFAHALYhQAwC2IUQAAtyBGAQDcghgFAHALYhQAwC2IUQAAt2BOvXrU1hJfjWH0aBoyxNmRpaVks9GAASTXZDkANUOMAgC4BR/qAQDcghgFAHALYhQAwC2IUQAAtyBGAQDc8j8l4fneOPDKAgAAALl6VFh0cmRraXRQS0wgcmRraXQgMjAyMC4wOS4xAAB4nHu/b+09BiDgAWJGBgjgAGJ2IG5gZGNIAIkzQ2gmJnYIzQjjo9LMcPUQdYxM3EAzGZkYmJgZmFkYWFgZWNkYWNkZRBjEYVYxcOzV7Dgg+t9uH4iz29nyQIDMEzsQuy796v5LzlfB4j/k5+4T3BADFv+yPtuet0V1P4i997egw4P23D0g9s7uBAeDtASweGO1lMP75L32ILYYAEkvJ/RzDIhtAAAAzXpUWHRNT0wgcmRraXQgMjAyMC4wOS4xAAB4nJ2SwQrCIQzG7z7FXqCxzTn13L9T1KFD79C996epYQUF4Rjyfeh+jLkALS7b8XaHGbKFAFAAMgB9zVorXIWI/B3sFCUlboqQi6XGIPRbgj38QrxnpwiWqmXUqqZFCqNZltGL8kcv5/8phJGsjlrhxV68ogrlwTNdnAsISmEaFGJdpERMVNKglGy22oty7H/EqLnaynR9UaSfzbiK07jSaVylaVzZNNYX82XK05wADuctPABgI2/Bg0e9HAAAAI96VFh0U01JTEVTIHJka2l0IDIwMjAuMDkuMQAAeJwVzDsOxTAIRNGtvDKRCALM8JFL91lRFv/sbnR0NWu9a61r3e/vux5nA5QeYa2A0XyMqz2DhN0B603KEWl2KtfAGNuEh0QVdme6L0BTuE0CfrrwPYKmsZV0HxJ170yagyGFcawygD6Z68gmZc8Opfv7AzrSIe/RH3TmAAAAAElFTkSuQmCC\n",
+      "text/plain": [
+       "<rdkit.Chem.rdchem.Mol at 0x7ff0d060d2b0>"
+      ]
+     },
+     "execution_count": 170,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "tempMols[1]"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.7"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
